@@ -7,7 +7,7 @@ import GameControls from './GameControls.vue';
 const COLUMNS = 10;
 const ROWS = 20;
 // useTetris から必要な状態・操作を受け取る
-const { grid, currentKey, currentShape, currentX, currentY, nextKey, score, level, lines, isRunning, start, stop, reset, moveLeft, moveRight, rotate, drop } = useTetris(COLUMNS, ROWS);
+const { grid, currentKey, currentShape, currentX, currentY, nextKey, score, level, lines, isRunning, start, stop, reset, moveLeft, moveRight, rotate, drop, moveDown } = useTetris(COLUMNS, ROWS);
 // 「グリッド + 現在落下中ミノ」を合成した表示用グリッド
 const displayGrid = computed(() => {
     const dg = grid.map(row => [...row]);
@@ -41,6 +41,7 @@ function handleKey(e) {
             break;
         case 'ArrowDown':
             // ソフトドロップが欲しい場合は useTetris に moveDown を追加して呼び出してください
+            moveDown(); // ← ソフトドロップ
             break;
         case ' ':
             e.preventDefault();
@@ -76,7 +77,7 @@ function onTouchEnd(e) {
     // 下スワイプでソフトドロップ（1セル）
     if (Math.abs(dy) > 30 && Math.abs(dy) > Math.abs(dx)) {
         if (dy > 0)
-            drop();
+            moveDown(); //ソフトドロップ
         return;
     }
     // タップ or 長押し

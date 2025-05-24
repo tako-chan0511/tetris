@@ -132,6 +132,12 @@ export function useTetris(columns, rows) {
         }
         tick();
     };
+    // １セルだけ落とす（ソフトドロップ）
+    const moveDown = () => {
+        if (canPlace(currentX.value, currentY.value + 1, currentRot.value)) {
+            currentY.value++;
+        }
+    };
     // 自動開始／停止
     onMounted(reset);
     onUnmounted(stop);
@@ -153,7 +159,8 @@ export function useTetris(columns, rows) {
         moveLeft,
         moveRight,
         rotate,
-        drop
+        drop,
+        moveDown,
     };
 }
 //# sourceMappingURL=useTetris.js.map
