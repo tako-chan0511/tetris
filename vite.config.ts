@@ -1,17 +1,17 @@
 // vite.config.ts
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-// ここを追加！
-import { resolve } from 'path'
+// path.resolve ではなく URL → file path で dirname を作成
+import { fileURLToPath, URL } from 'url'
 
 export default defineConfig({
-  // GitHub Pages 用の base、Vercel では自動的に `/`
-  base: process.env.VERCEL ? '/' : '/tetris/',
+  // GitHub Pages 用にサブパス固定
+  base: '/tetris/',
   plugins: [vue()],
   resolve: {
     alias: {
-      // `@` で `src/` を参照できるように
-      '@': resolve(__dirname, 'src')
+      // `@` を `src/` にマッピング
+      '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   }
 })

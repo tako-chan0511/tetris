@@ -8,7 +8,11 @@
     />
 
     <!-- メイン盤面 -->
-    <div class="board">
+    <div
+      class="board"
+      @touchstart.prevent="onTouchStart"
+      @touchend.prevent="onTouchEnd"
+    >
       <TetrisCell
         v-for="(cell, idx) in displayGrid.flat()"
         :key="idx"
@@ -63,7 +67,6 @@ const {
 
 // 「グリッド + 現在落下中ミノ」を合成した表示用グリッド
 const displayGrid = computed(() => {
-  // 元グリッドを深コピー
   const dg = grid.map(row => [...row])
   const shape = currentShape.value
   for (let dy = 0; dy < shape.length; dy++) {
@@ -71,7 +74,6 @@ const displayGrid = computed(() => {
       if (shape[dy][dx]) {
         const x = currentX.value + dx
         const y = currentY.value + dy
-        // 範囲内なら描画
         if (y >= 0 && y < ROWS && x >= 0 && x < COLUMNS) {
           dg[y][x] = currentKey.value
         }
@@ -81,7 +83,7 @@ const displayGrid = computed(() => {
   return dg
 })
 
-// キー操作ハンドラ
+// キーボード操作ハンドラ
 function handleKey(e: KeyboardEvent) {
   if (!isRunning.value) return
   switch (e.key) {
@@ -95,7 +97,7 @@ function handleKey(e: KeyboardEvent) {
       rotate()
       break
     case 'ArrowDown':
-      rotate()       // １ステップだけ下に動かす場合は useTetris に moveDown を追加し、ここで呼び出してください
+      // ソフトドロップが欲しい場合は useTetris に moveDown を追加して呼び出してください
       break
     case ' ':
       e.preventDefault()
@@ -104,7 +106,47 @@ function handleKey(e: KeyboardEvent) {
   }
 }
 
-// ライフサイクルでキー操作登録／解除
+// タッチ操作用
+let touchStartX = 0
+let touchStartY = 0
+let touchStartTime = 0
+
+function onTouchStart(e: TouchEvent) {
+  const t = e.touches[0]
+  touchStartX = t.clientX
+  touchStartY = t.clientY
+  touchStartTime = performance.now()
+}
+
+function onTouchEnd(e: TouchEvent) {
+  if (!isRunning.value) return
+  const t = e.changedTouches[0]
+  const dx = t.clientX - touchStartX
+  const dy = t.clientY - touchStartY
+  const dt = performance.now() - touchStartTime
+
+  // 横スワイプで左右移動
+  if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 0) moveRight()
+    else moveLeft()
+    return
+  }
+  // 下スワイプでソフトドロップ（1セル）
+  if (Math.abs(dy) > 30 && Math.abs(dy) > Math.abs(dx)) {
+    if (dy > 0) drop()
+    return
+  }
+  // タップ or 長押し
+  if (dt < 200) {
+    // 短タップで回転
+    rotate()
+  } else {
+    // 長押しでハードドロップ
+    drop()
+  }
+}
+
+// ライフサイクルでキー／タッチ操作登録／解除
 onMounted(() => {
   start()
   window.addEventListener('keydown', handleKey)
@@ -121,8 +163,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* ヘッダーとの隙間と、下部との隙間を統一的にあける */
-  margin: 0rem;
+  margin: 0;
 }
 
 /* スコア表示とボードの隙間を少し詰める */
@@ -134,6 +175,6 @@ onUnmounted(() => {
   background-color: #120505;
   padding: 4px;
   border-radius: 4px;
-  margin: 0.5rem auto; /* ← ここで上下（0.5rem）と左右（auto）を中央寄せ */
+  margin: 0.5rem auto;
 }
 </style>

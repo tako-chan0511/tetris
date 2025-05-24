@@ -10,12 +10,12 @@
 
 <script setup lang="ts">
 // 実行中フラグを受け取る
-const props = defineProps<{ 
-  running: boolean 
+const props = defineProps<{
+  running: boolean
 }>()
 
 // イベント定義
-defineEmits<{
+const emit = defineEmits<{
   (e: 'start'): void
   (e: 'stop'): void
   (e: 'reset'): void

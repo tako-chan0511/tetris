@@ -70,7 +70,7 @@ export function useTetris(columns: number, rows: number) {
 
   function clearLines() {
     for (let y = rows - 1; y >= 0; y--) {
-      if (grid[y].every(cell => cell !== null)) {
+      if (grid[y].every((cell: CellValue) => cell !== null)) {
         grid.splice(y, 1)
         grid.unshift(Array(columns).fill(null))
         linesCleared.value++
