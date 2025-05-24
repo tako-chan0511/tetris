@@ -1,10 +1,9 @@
 // src/composables/useTetris.ts
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import { SHAPES, COLORS, type ShapeKey } from '@/types/shapes'
+import { SHAPES, type ShapeKey } from '@/types/shapes'
 
 type CellValue = ShapeKey | null
 
-// ランダムにテトロミノの種類を返す
 function randomShape(): ShapeKey {
   const keys = Object.keys(SHAPES) as ShapeKey[]
   return keys[Math.floor(Math.random() * keys.length)]
@@ -16,81 +15,28 @@ export function useTetris(columns: number, rows: number) {
     Array.from({ length: rows }, () => Array(columns).fill(null))
   )
 
-  // 現在落下中のテトロミノ
   const currentKey = ref<ShapeKey>(randomShape())
   const currentRot = ref(0)
   const currentX   = ref(Math.floor(columns / 2) - 2)
   const currentY   = ref(0)
 
-  // 次に来るテトロミノ
   const nextKey = ref<ShapeKey>(randomShape())
 
-  // スコア情報
   const score        = ref(0)
   const level        = ref(1)
   const linesCleared = ref(0)
 
-  // 現在のテトロミノ形状 (4x4 行列)
   const currentShape = computed(() =>
     SHAPES[currentKey.value][currentRot.value]
   )
 
-  // ─── 実行中状態 & タイマー ───
+  // ─── タイマー／フラグ ───
   let timer: ReturnType<typeof setInterval> | null = null
-  const isRunning = ref(false)
+  const isRunning  = ref(false)
+  const isGameOver = ref(false)
 
-  // 新しいピースをスポーン
-  function spawnNew() {
-    currentKey.value = nextKey.value
-    nextKey.value    = randomShape()
-    currentRot.value = 0
-    currentX.value   = Math.floor(columns / 2) - 2
-    currentY.value   = 0
-    // ゲームオーバー判定を追加するならここに
-  }
-
-  // 1ティック下に移動 or 固定
-  function tick() {
-    if (canPlace(currentX.value, currentY.value + 1, currentRot.value)) {
-      currentY.value++
-    } else {
-      mergeCurrentToGrid()
-      clearLines()
-      spawnNew()
-    }
-  }
-
-  // ─── ゲーム制御 ───
-  function start() {
-    if (timer) clearInterval(timer)
-    timer = setInterval(
-      tick,
-      Math.max(100, 1000 - (level.value - 1) * 100)
-    )
-    isRunning.value = true
-  }
-  function stop() {
-    if (timer) {
-      clearInterval(timer)
-      timer = null
-    }
-    isRunning.value = false
-  }
-  function reset() {
-    stop()
-    // グリッド全消去
-    for (let y = 0; y < rows; y++) {
-      grid[y].fill(null)
-    }
-    score.value        = 0
-    level.value        = 1
-    linesCleared.value = 0
-    // 新ピース
-    spawnNew()
-  }
-
-  // ─── 衝突判定 & 固定 & ライン消去 ───
-  function canPlace(x: number, y: number, rot: number) {
+  // 衝突判定
+  function canPlace(x: number, y: number, rot: number): boolean {
     const shape = SHAPES[currentKey.value][rot]
     for (let dy = 0; dy < 4; dy++) {
       for (let dx = 0; dx < 4; dx++) {
@@ -106,14 +52,19 @@ export function useTetris(columns: number, rows: number) {
     return true
   }
 
-  function mergeCurrentToGrid() {
-    const shape = currentShape.value
-    for (let dy = 0; dy < 4; dy++) {
-      for (let dx = 0; dx < 4; dx++) {
-        if (shape[dy][dx]) {
-          grid[currentY.value + dy][currentX.value + dx] = currentKey.value
-        }
-      }
+  // 新ピーススポーン + ゲームオーバー判定
+  function spawnNew() {
+    currentKey.value = nextKey.value
+    nextKey.value    = randomShape()
+    currentRot.value = 0
+    currentX.value   = Math.floor(columns / 2) - 2
+    currentY.value   = 0
+
+    // ここで置けない＝天井到達→ゲームオーバー
+    if (!canPlace(currentX.value, currentY.value, currentRot.value)) {
+      isGameOver.value = true
+      stop()
+      alert('💥 Game Over!')  // 任意でメッセージ
     }
   }
 
@@ -125,29 +76,68 @@ export function useTetris(columns: number, rows: number) {
         linesCleared.value++
         score.value += 100 * level.value
         if (linesCleared.value % 10 === 0) level.value++
-        y++ // 再チェック
+        y++  // 同じ行を再チェック
       }
     }
   }
 
-  // ─── 外部操作用関数 ───
-  const moveLeft  = () => {
-    if (canPlace(currentX.value - 1, currentY.value, currentRot.value)) {
-      currentX.value--
+  // １ティック
+  function tick() {
+    if (isGameOver.value) return
+    if (canPlace(currentX.value, currentY.value + 1, currentRot.value)) {
+      currentY.value++
+    } else {
+      // 固定
+      const shape = currentShape.value
+      for (let dy = 0; dy < 4; dy++) {
+        for (let dx = 0; dx < 4; dx++) {
+          if (shape[dy][dx]) {
+            grid[currentY.value + dy][currentX.value + dx] = currentKey.value
+          }
+        }
+      }
+      clearLines()
+      spawnNew()
     }
   }
-  const moveRight = () => {
-    if (canPlace(currentX.value + 1, currentY.value, currentRot.value)) {
-      currentX.value++
-    }
+
+  // ─── ゲーム制御 ───
+  function start() {
+    if (isGameOver.value) return
+    if (timer) clearInterval(timer)
+    timer = setInterval(tick, Math.max(100, 1000 - (level.value - 1) * 100))
+    isRunning.value = true
   }
+  function stop() {
+    if (timer) {
+      clearInterval(timer)
+      timer = null
+    }
+    isRunning.value = false
+  }
+  function reset() {
+    stop()
+    // グリッド初期化
+    for (let y = 0; y < rows; y++) {
+      grid[y].fill(null)
+    }
+    score.value        = 0
+    level.value        = 1
+    linesCleared.value = 0
+    isGameOver.value   = false
+    spawnNew()
+    start()
+  }
+
+  // ─── 操作用 ───
+  const moveLeft  = () => { if (!isGameOver.value && canPlace(currentX.value - 1, currentY.value, currentRot.value)) currentX.value-- }
+  const moveRight = () => { if (!isGameOver.value && canPlace(currentX.value + 1, currentY.value, currentRot.value)) currentX.value++ }
   const rotate    = () => {
     const nr = (currentRot.value + 1) % SHAPES[currentKey.value].length
-    if (canPlace(currentX.value, currentY.value, nr)) {
-      currentRot.value = nr
-    }
+    if (!isGameOver.value && canPlace(currentX.value, currentY.value, nr)) currentRot.value = nr
   }
   const drop      = () => {
+    if (isGameOver.value) return
     while (canPlace(currentX.value, currentY.value + 1, currentRot.value)) {
       currentY.value++
     }
@@ -155,23 +145,21 @@ export function useTetris(columns: number, rows: number) {
   }
 
   // 自動開始／停止
-  onMounted(start)
+  onMounted(reset)
   onUnmounted(stop)
 
   return {
-    // 状態
     grid,
     currentKey,
     currentShape,
     currentX,
     currentY,
     nextKey,
-    // スコア情報
     score,
     level,
     lines: linesCleared,
     isRunning,
-    // 操作
+    isGameOver,
     start,
     stop,
     reset,
