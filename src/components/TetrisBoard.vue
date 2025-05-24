@@ -62,7 +62,8 @@ const {
   moveLeft,
   moveRight,
   rotate,
-  drop
+  drop,
+  moveDown
 } = useTetris(COLUMNS, ROWS)
 
 // 「グリッド + 現在落下中ミノ」を合成した表示用グリッド
@@ -98,6 +99,7 @@ function handleKey(e: KeyboardEvent) {
       break
     case 'ArrowDown':
       // ソフトドロップが欲しい場合は useTetris に moveDown を追加して呼び出してください
+      moveDown()        // ← ソフトドロップ
       break
     case ' ':
       e.preventDefault()
@@ -133,7 +135,7 @@ function onTouchEnd(e: TouchEvent) {
   }
   // 下スワイプでソフトドロップ（1セル）
   if (Math.abs(dy) > 30 && Math.abs(dy) > Math.abs(dx)) {
-    if (dy > 0) drop()
+    if (dy > 0) moveDown()   //ソフトドロップ
     return
   }
   // タップ or 長押し
