@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <header class="app-header">
-      <h1>Vue3版 Tetris</h1>
+      <h1>Vue3版 Tetrisクラッシク</h1>
     </header>
     <main class="app-main">
       <!-- メインのテトリスボードコンポーネント -->
